@@ -120,7 +120,7 @@
     ]);
 
     check('var q = 1', [
-        { position: 0, line: 1, column: 1, id: 'var', text: 'var' },
+        { position: 0, line: 1, column: 1, keyword: 'var', text: 'var' },
         { position: 3, line: 1, column: 4, ws: ' ', text: ' ' },
         { position: 4, line: 1, column: 5, id: 'q', text: 'q' },
         { position: 5, line: 1, column: 6, ws: ' ', text: ' ' },

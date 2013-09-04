@@ -4,12 +4,12 @@
  * The scanner understands ECMA-262, edition 5.1 (June 2011).
  *
  * Token-specific properties: comment, id - identifier, lt - line terminator,
- * pt - punctuator, re - regexp, str - string, ws - whitespace.
+ * pt - punctuator, re - regexp, str - string, ws - whitespace, keyword.
  */
 (function () {
     'use strict';
 
-    var chr, punctuators, divPunctuators, State;
+    var chr, punctuators, divPunctuators, keywords, State;
 
     chr = (function () {
         function chars(list) {
@@ -36,6 +36,10 @@
         '-- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= <<= >>= >>>= &= |= ' +
         '^='.split(/\s+/).sort(function (a, b) { return b.length - a.length; });
     divPunctuators = [ '/=', '/' ];
+    keywords = ('break case catch class const continue debugger default ' +
+        'delete do else enum export extends finally for function if import ' +
+        'in instanceof new return super switch this throw try typeof var ' +
+        'void while with').split(' ');
 
     State = (function () {
         function State(input) {
@@ -210,6 +214,15 @@
         return null;
     }
 
+    function identifier(st) {
+        var tk = identifierName(st);
+        if (null !== tk && -1 !== keywords.indexOf(tk.id)) {
+            tk.keyword = tk.id;
+            delete tk.id;
+        }
+        return tk;
+    }
+
     function punctuator(st) {
         var idx;
         for (idx = 0; idx < punctuators.length; idx += 1) {
@@ -345,7 +358,7 @@
 
     function inputElementRegExp(st) {
         return st.readTk('ws', chr.ws) || lineTerminator(st) || comment(st) ||
-            identifierName(st) || punctuator(st) || numericLiteral(st) ||
+            identifier(st) || punctuator(st) || numericLiteral(st) ||
             stringLiteral(st) || regexpLiteral(st);
     }
 

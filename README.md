@@ -1,7 +1,7 @@
 spelljs
 =======
 
-This repository contains small (less then 400 lines) and simple JavaScript
+This repository contains small (about 400 lines) and simple JavaScript
 lexical scanner.
 
 The file colorize.html demonstrates how to use the scanner to create JavaScript

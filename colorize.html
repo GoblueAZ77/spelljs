@@ -8,6 +8,7 @@
         white-space: pre;
         font-family: monospace;
     }
+    #source .keyword { color: #3A00FF; font-weight: bold; }
     #source .id { color: #000000; }
     #source .string { color: #036A06; }
     #source .comment { color: #0066FF; font-style: italic; }
@@ -15,9 +16,10 @@
     #source .regexp { color: #036A06; }
   </style>
   <script src="scan.js"></script>
-  <script>
+  <script id="code">
     window.onload = function () {
-        var tokens = window.spelljs.scan(window.spelljs.scan.toString());
+        var code = document.getElementById('code').innerText,
+            tokens = window.spelljs.scan(code);
         tokens.forEach(function (token) {
             var container = document.createElement('span');
             container.setAttribute('class', (function () {
@@ -31,11 +33,16 @@
                     return 'punctuator';
                 if (token.re)
                     return 'regexp';
+                if (token.keyword)
+                    return 'keyword';
             }()));
             container.appendChild(document.createTextNode(token.text));
             this.appendChild(container);
         }, document.getElementById('source'));
     };
+  </script>
+  <script id="example">
+
   </script>
 </head>
 <body>
