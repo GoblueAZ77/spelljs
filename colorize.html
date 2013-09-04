@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf8">
+  <title>colorize</title>
+  <style>
+    #source {
+        white-space: pre;
+        font-family: monospace;
+    }
+    #source .id { color: #000000; }
+    #source .string { color: #036A06; }
+    #source .comment { color: #0066FF; font-style: italic; }
+    #source .punctuator { color: #000000; }
+    #source .regexp { color: #036A06; }
+  </style>
+  <script src="scan.js"></script>
+  <script>
+    window.onload = function () {
+        var tokens = window.spelljs.scan(window.spelljs.scan.toString());
+        tokens.forEach(function (token) {
+            var container = document.createElement('span');
+            container.setAttribute('class', (function () {
+                if (token.id)
+                    return 'id';
+                if (token.str)
+                    return 'string';
+                if (token.comment)
+                    return 'comment';
+                if (token.pt)
+                    return 'punctuator';
+                if (token.re)
+                    return 'regexp';
+            }()));
+            container.appendChild(document.createTextNode(token.text));
+            this.appendChild(container);
+        }, document.getElementById('source'));
+    };
+  </script>
+</head>
+<body>
+  <div id="source"></div>
+</body>
+</html>
