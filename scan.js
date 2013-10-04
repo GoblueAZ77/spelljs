@@ -401,7 +401,7 @@
         if ('undefined' !== typeof module) {
             module.exports = scan;
         } else if ('undefined' !== typeof window) {
-            window.spelljs = { scan : scan };
+            (window.spelljs || (window.spelljs = {})).scan = scan;
         }
     }());
 }());
