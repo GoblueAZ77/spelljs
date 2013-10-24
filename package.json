@@ -1,0 +1,24 @@
+{
+  "name": "spelljs",
+  "version": "0.0.1",
+  "description": "A tool that helps to create a good JavaScript code.",
+  "main": "src/check.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:AlexAtNet/spelljs.git"
+  },
+  "keywords": [
+    "JavaScript",
+    "static analysis",
+    "code check"
+  ],
+  "author": "Alex Netkachov <alex.netkachov@gmail.com>",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/AlexAtNet/spelljs/issues"
+  },
+  "homepage": "https://github.com/AlexAtNet/spelljs"
+}

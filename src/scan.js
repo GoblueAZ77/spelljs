@@ -11,6 +11,17 @@
 
     var chr, punctuators, divPunctuators, keywords, State;
 
+    /**
+     * There are two approaches on checking the character:
+     *
+     * * By following the specification and quering Unicode Character Database
+     *   (UCD). This approach requires additional dependency on eigher plain
+     *   text data or some module that encapsulate it (The "unicode" module
+     *   seems to be the good one). See the file characters.js for the details.
+     * * By querying the engine with the `'var ...'` statements. This approach
+     *   is extremely slow on the complete range of characters, but the complete
+     *   range is almost never necessary.
+     */
     chr = (function () {
         function chars(list) {
             var pattern = '[\\u' + list.replace(/(?:(-)| )/g, '$1\\u') + ']',
@@ -19,17 +30,33 @@
             fn.not = function (ch) { return !fn(ch); };
             return fn;
         }
+        function cache(storage, key, create) {
+            var result = storage[key];
+            return undefined === result ? storage[key] = create() : result;
+        }
+        var idStartCache = { }, idContCache = { };
         return {
             ws : chars('0009 000B 000C 0020 00A0 FEFF'),
             lt : chars('000A 000D 2028 2029'),
-            idStart : chars('0024 0041-005A 005F 0061-007A 00AA 00B5 00BA ' +
-                '00C0-00D6 00D8-00F6 00F8-02C1 02C6-02D1 02E0-02E4 02EC 02EE ' +
-                '0370-0374 0376-0377 037A-037D 0386 0388-038A 038C 038E-03A1 ' +
-                '03A3-03F5 03F7-0481 048A-04FE'),
-            idCont : chars('0030-0039 0041-005A 005F 0061-007A 00AA 00B5 ' +
-                '00BA 00C0-00D6 00D8-00F6 00F8-02C1 02C6-02D1 02E0-02E4 02EC ' +
-                '02EE 0300-0374 0376-0377 037A-037D 0386 0388-038A 038C ' +
-                '038E-03A1 03A3-03F5 03F7-0481 0483-0487 048A-04FE')
+            idStart : function (ch) {
+                return cache(idStartCache, ch, function () {
+                    try {
+                        return 'a' === eval('var _q={},' + ch + '_=\'a\';' +
+                            '_q[' + ch + '_]=7;(' + ch + '_)');
+                    } catch (e) { }
+                    return false;
+                });
+            },
+            idCont : function (ch) {
+                return cache(idContCache, ch, function () {
+                    try {
+                        var r = eval('var q={},_' + ch + '1=\'a\';' +
+                            'q[_' + ch + '1]=7;(_' + ch + '1)');
+                        return 'a' === r;
+                    } catch (e) { }
+                    return false;
+                });
+            }
         };
     }());
     punctuators = '{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % ++ ' +

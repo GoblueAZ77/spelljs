@@ -4,10 +4,18 @@
     'use strict';
 
     var scan = require('./scan.js'),
-        assert = require('assert');
+        assert = require('assert'),
+        util = require('util');
 
     function check(text, elements) {
-        assert.deepEqual(scan(text), elements);
+        var tokens = scan(text);
+        try {
+            assert.deepEqual(tokens, elements);
+        } catch (e) {
+            console.log(util.inspect(tokens));
+            console.log(util.inspect(elements));
+            throw e;
+        }
     }
 
     check('', [ ]);
@@ -131,6 +139,18 @@
 
     check('/a/', [
         { position: 0, line: 1, column: 1, re: '/a/', text: '/a/' }
+    ]);
+
+    check('function(a,b){}', [
+        { position: 0, line: 1, column: 1, text: "function",
+            keyword: "function" },
+        { position: 8, line: 1, column: 9, pt: "(", text :"(" },
+        { position: 9, line: 1, column: 10, id: 'a', text: 'a' },
+        { position: 10, line: 1, column: 11, pt: ',', text: ',' },
+        { position: 11, line: 1, column: 12, id: 'b', text: 'b' },
+        { position: 12, line: 1, column: 13, pt: ')', text: ')' },
+        { position: 13, line: 1, column: 14, pt: '{', text: '{' },
+        { position: 14, line: 1, column: 15, pt: '}', text: '}' }
     ]);
 
     scan(require('fs').readFileSync('./scan.js', 'utf8'));
