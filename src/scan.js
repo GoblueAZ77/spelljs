@@ -4,7 +4,7 @@
  * The scanner understands ECMA-262, edition 5.1 (June 2011).
  *
  * Token-specific properties: comment, id - identifier, lt - line terminator,
- * pt - punctuator, re - regexp, str - string, ws - whitespace, keyword.
+ * punctuator, re - regexp, str - string, whitespace, keyword.
  */
 (function () {
     'use strict';
@@ -34,10 +34,10 @@
             var result = storage[key];
             return undefined === result ? storage[key] = create() : result;
         }
-        var idStartCache = { }, idContCache = { };
+        var idStartCache = { }, idContinueCache = { };
         return {
-            ws : chars('0009 000B 000C 0020 00A0 FEFF'),
-            lt : chars('000A 000D 2028 2029'),
+            whitespace : chars('0009 000B 000C 0020 00A0 FEFF'),
+            lineTerminator : chars('000A 000D 2028 2029'),
             idStart : function (ch) {
                 return cache(idStartCache, ch, function () {
                     try {
@@ -47,12 +47,11 @@
                     return false;
                 });
             },
-            idCont : function (ch) {
-                return cache(idContCache, ch, function () {
+            idContinue : function (ch) {
+                return cache(idContinueCache, ch, function () {
                     try {
-                        var r = eval('var q={},_' + ch + '1=\'a\';' +
+                        return 'a' === eval('var q={},_' + ch + '1=\'a\';' +
                             'q[_' + ch + '1]=7;(_' + ch + '1)');
-                        return 'a' === r;
                     } catch (e) { }
                     return false;
                 });
@@ -61,7 +60,9 @@
     }());
     punctuators = '{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % ++ ' +
         '-- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= <<= >>= >>>= &= |= ' +
-        '^='.split(/\s+/).sort(function (a, b) { return b.length - a.length; });
+        '^='.split(/\s+/).sort(function (item1, item2) {
+            return item2.length - item1.length;
+        });
     divPunctuators = [ '/=', '/' ];
     keywords = ('break case catch class const continue debugger default ' +
         'delete do else enum export extends finally for function if import ' +
@@ -97,15 +98,15 @@
 
         State.prototype.indexOf = function (substring, delta) {
             delta = delta || 0;
-            var p = this.input.indexOf(substring, this.index + delta);
-            return -1 === p ? -1 : (p + delta - this.index);
+            var pos = this.input.indexOf(substring, this.index + delta);
+            return -1 === pos ? -1 : (pos + delta - this.index);
         };
 
         State.prototype.move = function () {
             var ch = this.input[this.index],
                 prev = this.input[this.index - 1];
             if ('\u000D' === prev) {
-                if ('\u000A' === ch || '\u000D' === ch || !chr.lt(ch)) {
+                if ('\u000A' === ch || '\u000D' === ch || !chr.lineTerminator(ch)) {
                     this.column = 1;
                     this.line += 1;
                 } else {
@@ -115,7 +116,7 @@
             } else {
                 if ('\u000D' === ch) {
                     this.column += 1;
-                } else if (chr.lt(ch)) {
+                } else if (chr.lineTerminator(ch)) {
                     this.column = 1;
                     this.line += 1;
                 } else {
@@ -133,39 +134,40 @@
             return buffer || null;
         }
 
-        function readByLength(st, length) {
-            var len = Math.min(length, st.input.length - st.index),
-                content = st.input.substr(st.index, len) || null;
+        function readByLength(state, length) {
+            var len = Math.min(length, state.input.length - state.index),
+                content = state.input.substr(state.index, len) || null;
             while (len--) {
-                st.move();
+                state.move();
             }
             return content;
         }
 
-        function readByRegExp(st, regexp) {
+        function readByRegExp(state, regexp) {
             var match, len,
                 re = new RegExp(regexp.source, (regexp.ignoreCase ? 'i' : '') +
                     (regexp.multiline ? 'm' : '') + 'g');
-            re.lastIndex = st.index;
-            match = re.exec(st.input);
-            if (match === null || st.index !== match.index) {
+            re.lastIndex = state.index;
+            match = re.exec(state.input);
+            if (match === null || state.index !== match.index) {
                 return null;
             }
             len = match[0].length;
             while (len--) {
-                st.move();
+                state.move();
             }
             return match[0];
         }
 
-        State.prototype.read = function (crt) {
-            switch (typeof crt) {
+        State.prototype.read = function (criteria) {
+            switch (typeof criteria) {
             case 'number':
-                return readByLength(this, crt);
+                return readByLength(this, criteria);
             case 'function':
-                return readByCriteria(this, crt);
+                return readByCriteria(this, criteria);
             case 'object':
-                return (crt instanceof RegExp) ? readByRegExp(this, crt) : null;
+                return (criteria instanceof RegExp) ?
+                        readByRegExp(this, criteria) : null;
             case 'undefined':
                 return readByLength(this, 1);
             default:
@@ -173,13 +175,13 @@
             }
         };
 
-        State.prototype.readTk = function (property, criteria, properties) {
-            var tk = this.tokenBase();
-            tk.text = tk[property] = this.read(criteria);
+        State.prototype.readToken = function (property, criteria, properties) {
+            var token = this.tokenBase();
+            token.text = token[property] = this.read(criteria);
             Object.keys(properties || {}).forEach(function (key) {
-                tk[key] = properties[key];
+                token[key] = properties[key];
             });
-            return tk.text ? tk : null;
+            return token.text ? token : null;
         };
 
         State.prototype.tokenBase = function () {
@@ -214,80 +216,83 @@
         return State;
     }());
 
-    function lineTerminator(st) {
-        return st.test(chr.lt) && st.readTk('lt', 1 + st.test('\r\n')) || null;
+    function lineTerminator(state) {
+        return state.test(chr.lineTerminator) &&
+                state.readToken('lineTerminator', 1 + state.test('\r\n')) ||
+                null;
     }
 
-    function comment(st) {
-        var pos, tk;
-        if (st.test('/*')) {
-            if (-1 === (pos = st.indexOf('*/', 2))) {
-                st.error('Unclosed multiline comment');
+    function comment(state) {
+        var pos, token;
+        if (state.test('/*')) {
+            if (-1 === (pos = state.indexOf('*/', 2))) {
+                state.error('Unclosed multiline comment');
             }
-            tk = st.readTk('comment', pos, { multiline : true });
-            tk.terminator = chr.lt(tk.comment);
-            return tk;
+            token = state.readToken('comment', pos, { multiline : true });
+            token.terminator = chr.lineTerminator(token.comment);
+            return token;
         }
-        return st.test('//') ? st.readTk('comment', chr.lt.not) : null;
+        return state.test('//') ? state.readToken('comment', chr.lineTerminator.not) : null;
     }
 
-    function identifierName(st) {
-        var tk;
-        if (st.test(chr.idStart)) {
-            tk = st.tokenBase();
-            tk.text = tk.id = st.read() + (st.read(chr.idCont) || '');
-            return tk;
+    function identifierName(state) {
+        var token;
+        if (state.test(chr.idStart)) {
+            token = state.tokenBase();
+            token.text = token.id = state.read() +
+                (state.read(chr.idContinue) || '');
+            return token;
         }
         return null;
     }
 
-    function identifier(st) {
-        var tk = identifierName(st);
-        if (null !== tk && -1 !== keywords.indexOf(tk.id)) {
-            tk.keyword = tk.id;
-            delete tk.id;
+    function identifier(state) {
+        var token = identifierName(state);
+        if (null !== token && -1 !== keywords.indexOf(token.id)) {
+            token.keyword = token.id;
+            delete token.id;
         }
-        return tk;
+        return token;
     }
 
-    function punctuator(st) {
+    function punctuator(state) {
         var idx;
         for (idx = 0; idx < punctuators.length; idx += 1) {
-            if (st.test(punctuators[idx])) {
-                return st.readTk('pt', punctuators[idx].length);
+            if (state.test(punctuators[idx])) {
+                return state.readToken('punctuator', punctuators[idx].length);
             }
         }
         return null;
     }
 
-    function numericLiteral(st) {
-        return st.readTk('number',
+    function numericLiteral(state) {
+        return state.readToken('number',
             /(0x[\da-f]+|(0|[1-9]+(\.\d+)?|\.\d+)(e[+\-]?\d+)?)/i);
     }
 
-    function stringLiteral(st) {
+    function stringLiteral(state) {
         var quote, buffer, tmp, token,
             esc = /\\(u[\dA-Fa-f]{4}|x[\dA-Fa-f]{2}|\r(?!\n)|\r\n|\n|[^ux])/;
-        if (!st.test('"') && !st.test('\'')) {
+        if (!state.test('"') && !state.test('\'')) {
             return null;
         }
-        token = st.tokenBase();
-        quote = buffer = st.read();
+        token = state.tokenBase();
+        quote = buffer = state.read();
         do {
-            if (st.end() || st.test(chr.lt)) {
-                st.error('Unterminated string');
+            if (state.end() || state.test(chr.lineTerminator)) {
+                state.error('Unterminated string');
             }
-            tmp = st.character();
+            tmp = state.character();
             if ('\\' === tmp) {
-                tmp = st.read(esc);
+                tmp = state.read(esc);
                 if (null === tmp) {
-                    st.error('Invalid escape sequence');
+                    state.error('Invalid escape sequence');
                 }
                 buffer += tmp;
                 continue;
             }
             buffer += tmp;
-            st.move();
+            state.move();
             if (quote === tmp) {
                 token.text = token.str = buffer;
                 return token;
@@ -295,46 +300,47 @@
         } while (true);
     }
 
-    function regexpLiteral(st) {
-        function nonterm(st, excl) {
-            var ch = st.character();
-            return (chr.lt(ch) || -1 !== excl.indexOf(ch)) ? null : st.read();
+    function regexpLiteral(state) {
+        function untilLineTerminator(state, excludedChars) {
+            var ch = state.character();
+            return (chr.lineTerminator(ch) || -1 !== excludedChars.indexOf(ch)) ? null :
+                    state.read();
         }
 
-        function backslash(st) {
+        function backslash(state) {
             var local, ch;
-            if (st.test('\\')) {
-                local = st.copy();
+            if (state.test('\\')) {
+                local = state.copy();
                 local.move();
-                ch = nonterm(local, '');
+                ch = untilLineTerminator(local, '');
                 if (null === ch) {
                     return null;
                 }
-                st.apply(local);
+                state.apply(local);
                 return '\\' + ch;
             }
             return null;
         }
 
-        function clsChars(st) {
+        function regexpClassChars(state) {
             var buffer = '', ch;
             do {
-                ch = nonterm(st, ']\\') || backslash(st) || '';
+                ch = untilLineTerminator(state, ']\\') || backslash(state) || '';
                 buffer += ch;
             } while ('' !== ch);
             return buffer;
         }
 
-        function cls(st) {
+        function regexpClass(state) {
             var local, ch, body;
 
-            if (st.test('[')) {
-                local = st.copy();
+            if (state.test('[')) {
+                local = state.copy();
                 local.move();
-                body = clsChars(local);
+                body = regexpClassChars(local);
                 ch = local.read();
                 if (']' === ch) {
-                    st.apply(local);
+                    state.apply(local);
                     return '[' + body + ']';
                 }
                 local.error('Incomplete regexp group.');
@@ -342,83 +348,87 @@
             return null;
         }
 
-        function chars(st) {
+        function chars(state) {
             var result = '', ch;
             do {
-                ch = nonterm(st, '\\/[') || backslash(st) || cls(st) || '';
+                ch = untilLineTerminator(state, '\\/[') || backslash(state) ||
+                        regexpClass(state) || '';
                 result += ch;
             } while ('' !== ch);
             return result;
         }
 
-        function body(st) {
-            var firstChar = nonterm(st, '*\\/[') || backslash(st) || cls(st);
-            return null === firstChar ? null : firstChar + chars(st);
+        function body(state) {
+            var firstChar = untilLineTerminator(state, '*\\/[') || backslash(state) ||
+                    regexpClass(state);
+            return null === firstChar ? null : firstChar + chars(state);
         }
 
-        var local, reBody, reFlags, tk;
-        if (st.test('/')) {
-            local = st.copy();
-            tk = local.tokenBase();
+        var local, reBody, reFlags, token;
+        if (state.test('/')) {
+            local = state.copy();
+            token = local.tokenBase();
             local.move();
             reBody = body(local);
-            if (st.test('/')) {
+            if (state.test('/')) {
                 local.move();
-                reFlags = local.read(chr.idCont) || '';
-                tk.text = tk.re = '/' + reBody + '/' + reFlags;
-                st.apply(local);
-                return tk;
+                reFlags = local.read(chr.idContinue) || '';
+                token.text = token.re = '/' + reBody + '/' + reFlags;
+                state.apply(local);
+                return token;
             }
         }
         return null;
     }
 
-    function divPunctuator(st) {
+    function divPunctuator(state) {
         var idx;
         for (idx = 0; idx < divPunctuators.length; idx += 1) {
-            if (st.test(divPunctuators[idx])) {
-                return st.readTk('pt', divPunctuators[idx].length);
+            if (state.test(divPunctuators[idx])) {
+                return state.readToken('pt', divPunctuators[idx].length);
             }
         }
         return null;
     }
 
-    function inputElementRegExp(st) {
-        return st.readTk('ws', chr.ws) || lineTerminator(st) || comment(st) ||
-            identifier(st) || punctuator(st) || numericLiteral(st) ||
-            stringLiteral(st) || regexpLiteral(st);
+    function inputElementRegExp(state) {
+        return state.readToken('whitespace', chr.whitespace) ||
+                lineTerminator(state) || comment(state) || identifier(state) ||
+                punctuator(state) || numericLiteral(state) ||
+                stringLiteral(state) || regexpLiteral(state);
     }
 
     function scan(input) {
-        var state, tokens, tk, index, tkn;
+        var state, tokens, token, index, tmp;
 
         state = new State(input);
         tokens = [];
         while (!state.end()) {
-            tk = inputElementRegExp(state);
-            if (null === tk) {
+            token = inputElementRegExp(state);
+            if (null === token) {
                 index = tokens.length;
                 do {
                     index -= 1;
                     if (-1 === index) {
                         break;
                     }
-                    tkn = tokens[index];
-                    if (tkn.ws) {
+                    tmp = tokens[index];
+                    if (tmp.whitespace) {
                         continue;
                     }
-                    if (tkn.pt && -1 !== '(,=:[!&|?{};'.indexOf(tkn.pt)) {
-                        tk = divPunctuator(state);
+                    if (tmp.punctuator &&
+                            -1 !== '(,=:[!&|?{};'.indexOf(tmp.punctuator)) {
+                        token = divPunctuator(state);
                     } else {
-                        tk = regexpLiteral(state);
+                        token = regexpLiteral(state);
                     }
                     break;
                 } while (true);
-                if (null === tk) {
+                if (null === token) {
                     state.error('Unexpected character');
                 }
             }
-            tokens.push(tk);
+            tokens.push(token);
         }
         return tokens;
     }

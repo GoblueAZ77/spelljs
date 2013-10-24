@@ -3,44 +3,46 @@
 
     'use strict';
 
-    var scan = require('./scan.js'),
+    var scan = require('./src/scan.js'),
         assert = require('assert'),
         util = require('util');
 
     function check(text, elements) {
-        assert.deepEqual(tokens, elements);
+        assert.deepEqual(scan(text), elements);
     }
 
     check('', [ ]);
 
     check(' ', [
-        { position: 0, line: 1, column: 1, ws: ' ', text: ' ' }
+        { position: 0, line: 1, column: 1, whitespace: ' ', text: ' ' }
     ]);
 
     check('  ', [
-        { position: 0, line: 1, column: 1, ws: '  ', text: '  ' }
+        { position: 0, line: 1, column: 1, whitespace: '  ', text: '  ' }
     ]);
 
     check('\n', [
-        { position: 0, line: 1, column: 1, lt: '\n', text: '\n' }
+        { position: 0, line: 1, column: 1, lineTerminator: '\n', text: '\n' }
     ]);
 
     check('\n\n', [
-        { position: 0, line: 1, column: 1, lt: '\n', text: '\n' },
-        { position: 1, line: 2, column: 1, lt: '\n', text: '\n' }
+        { position: 0, line: 1, column: 1, lineTerminator: '\n', text: '\n' },
+        { position: 1, line: 2, column: 1, lineTerminator: '\n', text: '\n' }
     ]);
 
     check('\r\n\n', [
-        { position: 0, line: 1, column: 1, lt: '\r\n', text: '\r\n' },
-        { position: 2, line: 2, column: 1, lt: '\n', text: '\n' }
+        { position: 0, line: 1, column: 1, lineTerminator: '\r\n',
+            text: '\r\n' },
+        { position: 2, line: 2, column: 1, lineTerminator: '\n', text: '\n' }
     ]);
 
     check(' \r\n \n ', [
-        { position: 0, line: 1, column: 1, ws: ' ', text: ' ' },
-        { position: 1, line: 1, column: 2, lt: '\r\n', text: '\r\n' },
-        { position: 3, line: 2, column: 1, ws: ' ', text: ' ' },
-        { position: 4, line: 2, column: 2, lt: '\n', text: '\n' },
-        { position: 5, line: 3, column: 1, ws: ' ', text: ' ' }
+        { position: 0, line: 1, column: 1, whitespace: ' ', text: ' ' },
+        { position: 1, line: 1, column: 2, lineTerminator: '\r\n',
+            text: '\r\n' },
+        { position: 3, line: 2, column: 1, whitespace: ' ', text: ' ' },
+        { position: 4, line: 2, column: 2, lineTerminator: '\n', text: '\n' },
+        { position: 5, line: 3, column: 1, whitespace: ' ', text: ' ' }
     ]);
 
     check('\'a\'', [
@@ -73,19 +75,19 @@
     check('//\n', [
         { position: 0, line: 1, column: 1,
             comment: '//', text: '//' },
-        { position: 2, line: 1, column: 3, lt: '\n', text: '\n' }
+        { position: 2, line: 1, column: 3, lineTerminator: '\n', text: '\n' }
     ]);
 
     check('/*  */\n', [
         { position: 0, line: 1, column: 1, multiline: true,
             comment: '/*  */', text: '/*  */', terminator: false },
-        { position: 6, line: 1, column: 7, lt: '\n', text: '\n' }
+        { position: 6, line: 1, column: 7, lineTerminator: '\n', text: '\n' }
     ]);
 
     check('/* \r */\n', [
         { position: 0, line: 1, column: 1, multiline: true,
             comment: '/* \r */', text: '/* \r */', terminator: true },
-        { position: 7, line: 2, column: 3, lt: '\n', text: '\n' }
+        { position: 7, line: 2, column: 3, lineTerminator: '\n', text: '\n' }
     ]);
 
     check('0', [
@@ -122,11 +124,11 @@
 
     check('var q = 1', [
         { position: 0, line: 1, column: 1, keyword: 'var', text: 'var' },
-        { position: 3, line: 1, column: 4, ws: ' ', text: ' ' },
+        { position: 3, line: 1, column: 4, whitespace: ' ', text: ' ' },
         { position: 4, line: 1, column: 5, id: 'q', text: 'q' },
-        { position: 5, line: 1, column: 6, ws: ' ', text: ' ' },
-        { position: 6, line: 1, column: 7, pt: '=', text: '=' },
-        { position: 7, line: 1, column: 8, ws: ' ', text: ' ' },
+        { position: 5, line: 1, column: 6, whitespace: ' ', text: ' ' },
+        { position: 6, line: 1, column: 7, punctuator: '=', text: '=' },
+        { position: 7, line: 1, column: 8, whitespace: ' ', text: ' ' },
         { position: 8, line: 1, column: 9, number: '1', text: '1' }
     ]);
 
@@ -137,14 +139,14 @@
     check('function(a,b){}', [
         { position: 0, line: 1, column: 1, text: "function",
             keyword: "function" },
-        { position: 8, line: 1, column: 9, pt: "(", text :"(" },
+        { position: 8, line: 1, column: 9, punctuator: "(", text :"(" },
         { position: 9, line: 1, column: 10, id: 'a', text: 'a' },
-        { position: 10, line: 1, column: 11, pt: ',', text: ',' },
+        { position: 10, line: 1, column: 11, punctuator: ',', text: ',' },
         { position: 11, line: 1, column: 12, id: 'b', text: 'b' },
-        { position: 12, line: 1, column: 13, pt: ')', text: ')' },
-        { position: 13, line: 1, column: 14, pt: '{', text: '{' },
-        { position: 14, line: 1, column: 15, pt: '}', text: '}' }
+        { position: 12, line: 1, column: 13, punctuator: ')', text: ')' },
+        { position: 13, line: 1, column: 14, punctuator: '{', text: '{' },
+        { position: 14, line: 1, column: 15, punctuator: '}', text: '}' }
     ]);
 
-    scan(require('fs').readFileSync('./scan.js', 'utf8'));
+    scan(require('fs').readFileSync('./src/scan.js', 'utf8'));
 }());

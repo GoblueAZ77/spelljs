@@ -114,7 +114,9 @@ check(fs.readFileSync(file, 'utf8'), {
                     'ttl,' +
                     'tz,' +
                     'val,' +
-                    'xhr'
+                    'xhr',
+                // that's me :)
+                'spelljs'
             ].join(',').split(',')
         },
         // everybody use them as first index, second index and exception
