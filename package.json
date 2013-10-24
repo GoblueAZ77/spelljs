@@ -1,6 +1,6 @@
 {
   "name": "spelljs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A tool that helps to create a good JavaScript code.",
   "main": "src/check.js",
   "scripts": {
