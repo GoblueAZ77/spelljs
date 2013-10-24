@@ -6,7 +6,7 @@ already taken." (Clean Code: A Handbook of Agile Software Craftsmanship)*
 
 This small project does an important thing - it checks that the variables in
 your code are meaningful, easy to read, and correct. It is, of course, an
-ambitious task, but with a few of assumptions this can be done.
+ambitious task, but with a few assumptions this can be done.
 
 So, the assumptions:
 
