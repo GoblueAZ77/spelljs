@@ -8,14 +8,7 @@
         util = require('util');
 
     function check(text, elements) {
-        var tokens = scan(text);
-        try {
-            assert.deepEqual(tokens, elements);
-        } catch (e) {
-            console.log(util.inspect(tokens));
-            console.log(util.inspect(elements));
-            throw e;
-        }
+        assert.deepEqual(tokens, elements);
     }
 
     check('', [ ]);

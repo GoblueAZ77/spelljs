@@ -18,9 +18,9 @@ check(fs.readFileSync(file, 'utf8'), {
             extras : [
                 // javascript-specific words
                 'abs,concat,json,substr,substring,unescape,unshift,stringify,' +
-                    'pow',
+                    'pow,eval',
                 // node.js-specific words
-                'argv,dirname,fs,sync',
+                'argv,dirname,fs,sync,util',
                 // DOM-specific words
                 'autoscroll,onreadystatechange,mouseleave,mouseenter,' +
                     'onload,onclick,textarea,checkbox,onerror,nodeset',
@@ -41,11 +41,13 @@ check(fs.readFileSync(file, 'utf8'), {
                     'interceptors,' +
                     'iterator,iterators,' +
                     'lexer,' +
+                    'multiline,' +
                     'normalize,normalized,' +
-                    'poller,' +
                     'pluralize,' +
+                    'poller,' +
                     'prepend,' +
                     'preprocess,' +
+                    'punctuators,' +
                     'replacer,' +
                     'sanitization,sanitizer,' +
                     'setup,' +
@@ -56,11 +58,14 @@ check(fs.readFileSync(file, 'utf8'), {
                     'whens,' +
                     'whitelist,whitelists,' +
                     'whitespace',
-                // they are short, but developers like them
+                // They are short, but developers like them and most of the
+                // developers understand them well. Of course, 'zzz' is not
+                // right name to include to this list.
                 'app,' +
                     'arg,args,' +
                     'attr,attrs,' +
                     'ch,' +
+                    'chr,' +
                     'ctrl,ctrls,' +
                     'def,defs,' +
                     'dealoc,' +
@@ -68,8 +73,10 @@ check(fs.readFileSync(file, 'utf8'), {
                     'diff,' +
                     'dst,' +
                     'elem,elems,' +
+                    'evt,' +
                     'enum,' +
                     'eq,' +
+                    'esc,' +
                     'evaled,' +
                     'exp,' +
                     'expr,' +
@@ -102,6 +109,7 @@ check(fs.readFileSync(file, 'utf8'), {
                     'stat,stats,' +
                     'str,' +
                     'suf,' +
+                    'tmp,' +
                     'tpl,' +
                     'ttl,' +
                     'tz,' +
@@ -109,7 +117,8 @@ check(fs.readFileSync(file, 'utf8'), {
                     'xhr'
             ].join(',').split(',')
         },
-        shortName : { enabled : false }
+        // everybody use them as first index, second index and exception
+        shortName : { exceptions : 'i,j,e'.split(',') }
     }
 }).forEach(function (item) {
     console.log(file + ': line ' + item.line + ', col ' + item.column + ', ' +
