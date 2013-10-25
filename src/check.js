@@ -39,7 +39,7 @@
                 }
 
                 return 1 < name.length ? null :
-                        util.format('The name \'%s\' is too small.', name);
+                        util.format('The name \'%s\' is too short.', name);
             },
             dictionary : function (name, parsed, options) {
                 var words;
