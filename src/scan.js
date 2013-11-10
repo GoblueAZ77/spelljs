@@ -17,7 +17,7 @@
      * * By following the specification and quering Unicode Character Database
      *   (UCD). This approach requires additional dependency on eigher plain
      *   text data or some module that encapsulate it (The "unicode" module
-     *   seems to be the good one). See the file characters.js for the details.
+     *   seems to be the good one).
      * * By querying the engine with the `'var ...'` statements. This approach
      *   is extremely slow on the complete range of characters, but the complete
      *   range is almost never necessary.
@@ -58,11 +58,9 @@
             }
         };
     }());
-    punctuators = '{ } ( ) [ ] . ; , < > <= >= == != === !== + - * % ++ ' +
-        '-- << >> >>> & | ^ ! ~ && || ? : = += -= *= %= <<= >>= >>>= &= |= ' +
-        '^='.split(/\s+/).sort(function (item1, item2) {
-            return item2.length - item1.length;
-        });
+    punctuators = new RegExp([ '[{}()\\[\\]\\.;,<>+\\-*%&|^!~?:=]',
+        '[<>=!+\\-*%&|^]=', '[=!]==', '\\+\\+', '--', '<<', '>>', '>>>', '&&',
+        '\\|\\|', '<<=', '>>=', '>>>=' ].join('|'), 'g');
     divPunctuators = [ '/=', '/' ];
     keywords = ('break case catch class const continue debugger default ' +
         'delete do else enum export extends finally for function if import ' +
@@ -90,7 +88,8 @@
             }
             switch (typeof criteria) {
             case 'string':
-                return this.index === this.input.indexOf(criteria, this.index);
+                return criteria === this.input.substr(this.index,
+                    criteria.length);
             case 'function':
                 return criteria(this.input[this.index], this.input, this.index);
             }
@@ -106,7 +105,8 @@
             var ch = this.input[this.index],
                 prev = this.input[this.index - 1];
             if ('\u000D' === prev) {
-                if ('\u000A' === ch || '\u000D' === ch || !chr.lineTerminator(ch)) {
+                if ('\u000A' === ch || '\u000D' === ch ||
+                        !chr.lineTerminator(ch)) {
                     this.column = 1;
                     this.line += 1;
                 } else {
@@ -144,11 +144,9 @@
         }
 
         function readByRegExp(state, regexp) {
-            var match, len,
-                re = new RegExp(regexp.source, (regexp.ignoreCase ? 'i' : '') +
-                    (regexp.multiline ? 'm' : '') + 'g');
-            re.lastIndex = state.index;
-            match = re.exec(state.input);
+            var match, len;
+            regexp.lastIndex = state.index;
+            match = regexp.exec(state.input);
             if (match === null || state.index !== match.index) {
                 return null;
             }
@@ -175,12 +173,9 @@
             }
         };
 
-        State.prototype.readToken = function (property, criteria, properties) {
+        State.prototype.readToken = function (property, criteria) {
             var token = this.tokenBase();
             token.text = token[property] = this.read(criteria);
-            Object.keys(properties || {}).forEach(function (key) {
-                token[key] = properties[key];
-            });
             return token.text ? token : null;
         };
 
@@ -228,11 +223,13 @@
             if (-1 === (pos = state.indexOf('*/', 2))) {
                 state.error('Unclosed multiline comment');
             }
-            token = state.readToken('comment', pos, { multiline : true });
+            token = state.readToken('comment', pos);
+            token.multiline = true;
             token.terminator = chr.lineTerminator(token.comment);
             return token;
         }
-        return state.test('//') ? state.readToken('comment', chr.lineTerminator.not) : null;
+        return state.test('//') ? state.readToken('comment',
+            chr.lineTerminator.not) : null;
     }
 
     function identifierName(state) {
@@ -255,24 +252,14 @@
         return token;
     }
 
-    function punctuator(state) {
-        var idx;
-        for (idx = 0; idx < punctuators.length; idx += 1) {
-            if (state.test(punctuators[idx])) {
-                return state.readToken('punctuator', punctuators[idx].length);
-            }
-        }
-        return null;
-    }
-
     function numericLiteral(state) {
         return state.readToken('number',
-            /(0x[\da-f]+|(0|[1-9]+(\.\d+)?|\.\d+)(e[+\-]?\d+)?)/i);
+            /(0x[\da-f]+|(0|[1-9]+(\.\d+)?|\.\d+)(e[+\-]?\d+)?)/ig);
     }
 
     function stringLiteral(state) {
         var quote, buffer, tmp, token,
-            esc = /\\(u[\dA-Fa-f]{4}|x[\dA-Fa-f]{2}|\r(?!\n)|\r\n|\n|[^ux])/;
+            esc = /\\(u[\dA-Fa-f]{4}|x[\dA-Fa-f]{2}|\r(?!\n)|\r\n|\n|[^ux])/g;
         if (!state.test('"') && !state.test('\'')) {
             return null;
         }
@@ -303,8 +290,8 @@
     function regexpLiteral(state) {
         function untilLineTerminator(state, excludedChars) {
             var ch = state.character();
-            return (chr.lineTerminator(ch) || -1 !== excludedChars.indexOf(ch)) ? null :
-                    state.read();
+            return (chr.lineTerminator(ch) ||
+                    -1 !== excludedChars.indexOf(ch)) ? null : state.read();
         }
 
         function backslash(state) {
@@ -325,7 +312,8 @@
         function regexpClassChars(state) {
             var buffer = '', ch;
             do {
-                ch = untilLineTerminator(state, ']\\') || backslash(state) || '';
+                ch = untilLineTerminator(state, ']\\') ||
+                        backslash(state) || '';
                 buffer += ch;
             } while ('' !== ch);
             return buffer;
@@ -359,8 +347,8 @@
         }
 
         function body(state) {
-            var firstChar = untilLineTerminator(state, '*\\/[') || backslash(state) ||
-                    regexpClass(state);
+            var firstChar = untilLineTerminator(state, '*\\/[') ||
+                    backslash(state) || regexpClass(state);
             return null === firstChar ? null : firstChar + chars(state);
         }
 
@@ -394,8 +382,9 @@
     function inputElementRegExp(state) {
         return state.readToken('whitespace', chr.whitespace) ||
                 lineTerminator(state) || comment(state) || identifier(state) ||
-                punctuator(state) || numericLiteral(state) ||
-                stringLiteral(state) || regexpLiteral(state);
+                state.readToken('punctuator', punctuators) ||
+                numericLiteral(state) || stringLiteral(state) ||
+                regexpLiteral(state);
     }
 
     function scan(input) {
