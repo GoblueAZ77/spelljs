@@ -26,9 +26,9 @@
         function chars(list) {
             var pattern = '[\\u' + list.replace(/(?:(-)| )/g, '$1\\u') + ']',
                 regexp = new RegExp(pattern),
-                fn = function (ch) { return regexp.test(ch); };
-            fn.not = function (ch) { return !fn(ch); };
-            return fn;
+                method = function (ch) { return regexp.test(ch); };
+            method.not = function (ch) { return !method(ch); };
+            return method;
         }
         function cache(storage, key, create) {
             var result = storage[key];

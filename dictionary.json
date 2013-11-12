@@ -1,5 +1,5 @@
 {
-  "js-api" : [
+  "js-api": [
     "abs",
     "concat",
     "eval",
@@ -10,16 +10,17 @@
     "unescape",
     "unshift"
   ],
-  "node-api" : [
+  "node-api": [
     "argv",
     "dirname",
+    "env",
     "extname",
     "fs",
     "pathname",
     "sync",
     "util"
   ],
-  "dom-api" : [
+  "dom-api": [
     "autoscroll",
     "checkbox",
     "mouseenter",
@@ -2264,6 +2265,7 @@
     "nothing",
     "notice",
     "notification",
+    "notifications",
     "notified",
     "notify",
     "noun",
@@ -3462,6 +3464,7 @@
     "tell",
     "temp",
     "template",
+    "templates",
     "temporary",
     "ten",
     "term",
@@ -3914,7 +3917,7 @@
     "zoo",
     "zoom"
   ],
-  "short" : [
+  "short": [
     "app",
     "arg",
     "args",
@@ -3979,9 +3982,11 @@
     "val",
     "xhr"
   ],
-  "names" : [
+  "names": [
     "ajax",
     "css",
+    "debian",
+    "favicon",
     "http",
     "https",
     "js",
