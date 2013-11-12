@@ -4,6 +4,7 @@ var check = require('./src/check.js'),
 
 if (process.argv.length < 3) {
     console.log('Usage: node check-cli.js file.js');
+    return;
 }
 
 file = process.argv[2];
@@ -120,7 +121,7 @@ check(fs.readFileSync(file, 'utf8'), {
             ].join(',').split(',')
         },
         // everybody use them as first index, second index and exception
-        shortName : { exceptions : 'i,j,e'.split(',') }
+        shortName : { exceptions : 'i,j,e,_,$'.split(',') }
     }
 }).forEach(function (item) {
     console.log(file + ': line ' + item.line + ', col ' + item.column + ', ' +

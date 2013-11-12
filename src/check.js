@@ -9,11 +9,8 @@
     var dictionary = (function () {
             var file, list, extension = [];
 
-            file = path.resolve(__dirname, '../dictionary/brit-a-z.txt');
-            list = fs.readFileSync(file, 'utf8').trim().split('\r\n')
-                .filter(function (item) {
-                    return '' !== item && -1 === item.indexOf('\'');
-                });
+            file = path.resolve(__dirname, '../dictionary.json');
+            list = JSON.parse(fs.readFileSync(file, 'utf8'));
 
             return {
                 extension : function (words) {
