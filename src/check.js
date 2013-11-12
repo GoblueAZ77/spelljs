@@ -1,32 +1,21 @@
 (function () {
     'use strict';
 
-    var scan = require('./scan.js'),
-        path = require('path'),
-        fs = require('fs'),
-        util = require('util');
+    function format(text) {
+        var index, parameters;
 
-    var dictionary = (function () {
-            var file, list, extension = [];
-
-            file = path.resolve(__dirname, '../dictionary.json');
-            list = JSON.parse(fs.readFileSync(file, 'utf8'));
-
-            return {
-                extension : function (words) {
-                    extension = words.slice(0);
-                },
-                check : function (word) {
-                    return -1 !== list.indexOf(word) ||
-                        -1 !== extension.indexOf(word);
-                }
-            };
-        }());
+        index = -1;
+        parameters = Array.prototype.slice.call(arguments, 1);
+        return text.replace(/%s/g, function () {
+            index += 1;
+            return parameters[index];
+        });
+    }
 
     var rules = {
             longName : function (name, parser, options) {
                 return 33 > name.length ? null :
-                        util.format('The name \'%s\' is too long.', name);
+                        format('The name \'%s\' is too long.', name);
             },
             shortName : function (name, parsed, options) {
                 if (false === options.enabled || (options &&
@@ -36,13 +25,26 @@
                 }
 
                 return 1 < name.length ? null :
-                        util.format('The name \'%s\' is too short.', name);
+                        format('The name \'%s\' is too short.', name);
             },
             dictionary : function (name, parsed, options) {
-                var words;
+                var words, dictionary;
+
+                dictionary = (function (lists) {
+                        var list;
+
+                        list = [];
+                        Object.keys(lists).forEach(function (key) {
+                            Array.prototype.push.apply(list, lists[key]);
+                        });
+
+                        return function (word) {
+                            return -1 !== list.indexOf(word);
+                        };
+                    }(options.dictionary));
 
                 function check(word) {
-                    return dictionary.check(word) || (options.extras &&
+                    return dictionary(word) || (options.extras &&
                             -1 !== options.extras.indexOf(word));
                 }
 
@@ -50,7 +52,8 @@
                     return null;
                 }
 
-                if (options.ignore && -1 !== options.ignore.indexOf(name)) {
+                // parsed as "is Na N" so it is better to ignore it
+                if ('isNaN' === name) {
                     return null;
                 }
 
@@ -63,13 +66,13 @@
                     });
 
                     if (0 < words.length) {
-                        return util.format(1 === words.length ?
+                        return format(1 === words.length ?
                                 'The word %s in %s is unknown or misspelled.' :
                                 'The words %s in %s are unknown or misspelled.',
                             words.join(', '), name);
                     }
                 } else if (1 < parsed[0].length && !check(parsed[0])) {
-                    return util.format('The name \'%s\' is unknown or' +
+                    return format('The name \'%s\' is unknown or' +
                         ' misspelled.', parsed[0]);
                 }
 
@@ -100,13 +103,13 @@
         return parts;
     }
 
-    function main(code, options) {
+    function check(tokens, options) {
         options = options || { };
         options.rules = options.rules || { };
 
         var messages = [];
 
-        scan(code).filter(function (token) {
+        tokens.filter(function (token) {
             return token.id;
         }).forEach(function (token) {
             var parsed = parse(token.id);
@@ -127,5 +130,12 @@
         return messages;
     }
 
-    module.exports = main;
+    (function () {
+        /*global module, window */
+        if ('undefined' !== typeof module) {
+            module.exports = check;
+        } else if ('undefined' !== typeof window) {
+            (window.spelljs || (window.spelljs = {})).check = check;
+        }
+    }());
 }());
