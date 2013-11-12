@@ -43,13 +43,20 @@ Technicalities
 
 The project consists of the four main parts:
 
-* JavaScript scanner - small (about 400 lines) and simple lexical scanner
+* JavaScript scanner - small (about 420 lines) and simple lexical scanner
 * Repository of rules - configurable set of rules
 * Dictionary rule - this one is here just because it is big enough
 * Library facade - you probably will use this almost all the time you work with
 the library
 
 A few tests are in the file "scan.tests.js".
+
+Limitations
+-----------
+
+* There is an extreme case `if (something) /regexp/` which is not handled
+correctly by the scanner.
+* Unicode codepoints in variables are not supported yet.
 
 Other Notes
 -----------

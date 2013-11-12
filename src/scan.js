@@ -58,10 +58,10 @@
             }
         };
     }());
-    punctuators = new RegExp([ '[{}()\\[\\]\\.;,<>+\\-*%&|^!~?:=]',
-        '[<>=!+\\-*%&|^]=', '[=!]==', '\\+\\+', '--', '<<', '>>', '>>>', '&&',
-        '\\|\\|', '<<=', '>>=', '>>>=' ].join('|'), 'g');
-    divPunctuators = [ '/=', '/' ];
+    punctuators = new RegExp([ '>>>=', '<<=', '>>=', '>>>', '<<', '>>',
+        '[=!]==', '\\|\\|', '[<>=!+\\-*%&|^]=', '&&', '\\+\\+', '--',
+        '[{}()\\[\\]\\.;,<>+\\-*%&|^!~?:=]' ].join('|'), 'g');
+    divPunctuators = /\/=?/g;
     keywords = ('break case catch class const continue debugger default ' +
         'delete do else enum export extends finally for function if import ' +
         'in instanceof new return super switch this throw try typeof var ' +
@@ -369,56 +369,43 @@
         return null;
     }
 
-    function divPunctuator(state) {
-        var idx;
-        for (idx = 0; idx < divPunctuators.length; idx += 1) {
-            if (state.test(divPunctuators[idx])) {
-                return state.readToken('pt', divPunctuators[idx].length);
-            }
-        }
-        return null;
-    }
-
-    function inputElementRegExp(state) {
-        return state.readToken('whitespace', chr.whitespace) ||
-                lineTerminator(state) || comment(state) || identifier(state) ||
-                state.readToken('punctuator', punctuators) ||
-                numericLiteral(state) || stringLiteral(state) ||
-                regexpLiteral(state);
-    }
-
     function scan(input) {
-        var state, tokens, token, index, tmp;
+        var state, tokens, token, context;
 
         state = new State(input);
+        context = 'regexp';
         tokens = [];
         while (!state.end()) {
-            token = inputElementRegExp(state);
+            token = state.readToken('whitespace', chr.whitespace) ||
+                    lineTerminator(state) ||
+                    comment(state) ||
+                    identifier(state) ||
+                    state.readToken('punctuator', punctuators) ||
+                    numericLiteral(state) ||
+                    stringLiteral(state);
             if (null === token) {
-                index = tokens.length;
-                do {
-                    index -= 1;
-                    if (-1 === index) {
-                        break;
-                    }
-                    tmp = tokens[index];
-                    if (tmp.whitespace) {
-                        continue;
-                    }
-                    if (tmp.punctuator &&
-                            -1 !== '(,=:[!&|?{};'.indexOf(tmp.punctuator)) {
-                        token = divPunctuator(state);
-                    } else {
-                        token = regexpLiteral(state);
-                    }
+                switch (context) {
+                case 'div':
+                    token = state.readToken('punctuator', divPunctuators);
                     break;
-                } while (true);
-                if (null === token) {
-                    state.error('Unexpected character');
+                case 'regexp':
+                    token = regexpLiteral(state);
+                    break;
                 }
+            }
+            if (null === token) {
+                state.error('Unexpected character');
+            }
+            if (token.number || token.string || token.id ||
+                    'this' === token.keyword) {
+                context = 'div';
+            } else if (token.punctuator) {
+                context = -1 !== [ ']', ')' ].indexOf(token.punctuator) ?
+                        'div' : 'regexp';
             }
             tokens.push(token);
         }
+
         return tokens;
     }
 
