@@ -28,7 +28,7 @@
     }
 
     function spellCheck(options) {
-        var dictionary;
+        var dictionary, check;
 
         /**
          * Detects words in the identifier name.
@@ -37,21 +37,11 @@
          * [ "this", "is", "style" ].
          */
         function parseWords(id) {
-            var words, parts, isUpper, isDigit;
+            var words, parts, isUpper;
 
             isUpper = (function () {
                 var min = 'A'.charCodeAt(0) - 1,
-                    max = 'Z'.charCodeAt(0) - 1;
-
-                return function (ch) {
-                    var code = ch.charCodeAt(0);
-                    return min < code && code < max;
-                };
-            }());
-
-            isDigit = (function () {
-                var min = '0'.charCodeAt(0) - 1,
-                    max = '9'.charCodeAt(0) - 1;
+                    max = 'Z'.charCodeAt(0) + 1;
 
                 return function (ch) {
                     var code = ch.charCodeAt(0);
@@ -60,7 +50,9 @@
             }());
 
             words = [];
-            id.split('_').forEach(function (part) {
+            id.split(/[^a-z]+/i).filter(function (item) {
+                return '' !== item;
+            }).forEach(function (part) {
                 var word;
 
                 if ('' === part) {
@@ -69,41 +61,22 @@
 
                 word = '';
                 part.split('').forEach(function (ch, idx) {
-                    var previousIsUpper, previousIsLower, previousIsDigit,
-                        nextIsBig, first, last;
+                    var previousIsUpper, nextIsUpper, first, last;
 
-                    if (isDigit(ch)) {
-                        if ('' !== word) {
-                            words.push(word.toLowerCase());
-                            word = '';
-                        }
-                        return;
-                    }
-
-                    // ABC -> ABC
-                    // aBC -> a, BC
-                    // AbC -> Ab, C
-                    // ABc -> A, Bc
-                    // abC -> ab, C
-                    // aBc -> a, Bc
-                    // Abc -> Abc,
-                    // abc -> abc
                     if (isUpper(ch)) {
                         first = 0 === idx;
                         previousIsUpper = !first && isUpper(part[idx - 1]);
-                        previousIsDigit = !first && isDigit(part[idx - 1]);
-                        previousIsLower = !first && !previousIsUpper &&
-                            !previousIsDigit;
                         last = idx === part.length - 1;
-                        nextIsBig = !last && isUpper(part[idx + 1]);
+                        nextIsUpper = !last && isUpper(part[idx + 1]);
 
-                        if (previousIsLower || !(nextIsBig || last)) {
+                        if (first || (previousIsUpper &&
+                                (nextIsUpper || last))) {
+                            word += ch;
+                        } else {
                             if ('' !== word) {
                                 words.push(word.toLowerCase());
                             }
                             word = ch;
-                        } else {
-                            word += ch;
                         }
                     } else {
                         word += ch;
@@ -131,7 +104,7 @@
             };
         }(options.dictionary || [ ]));
 
-        return function (id) {
+        check = function (id) {
             var words, unknownWords;
 
             // parsed as "is Na N" so it is better to ignore it
@@ -141,27 +114,33 @@
 
             words = parseWords(id);
 
-            if (1 < words.length) {
-                unknownWords = words.map(function (word) {
-                    return 1 === word.length || dictionary(word) ? null :
-                            '\'' + word + '\'';
-                }).filter(function (word) {
-                    return null !== word;
-                });
+            if (0 !== words.length) {
+                if (1 < words.length) {
+                    unknownWords = words.map(function (word) {
+                        return 1 === word.length || dictionary(word) ? null :
+                                '\'' + word + '\'';
+                    }).filter(function (word) {
+                        return null !== word;
+                    });
 
-                if (0 < unknownWords.length) {
-                    return format(1 === unknownWords.length ?
-                            'The word %s in %s is unknown or misspelled.' :
-                            'The words %s in %s are unknown or misspelled.',
-                        unknownWords.join(', '), id);
+                    if (0 < unknownWords.length) {
+                        return format(1 === unknownWords.length ?
+                                'The word %s in %s is unknown or misspelled.' :
+                                'The words %s in %s are unknown or misspelled.',
+                            unknownWords.join(', '), id);
+                    }
+                } else if (1 < words[0].length && !dictionary(words[0])) {
+                    return format('The name \'%s\' is unknown or' +
+                        ' misspelled.', words[0]);
                 }
-            } else if (1 < words[0].length && !dictionary(words[0])) {
-                return format('The name \'%s\' is unknown or' +
-                    ' misspelled.', words[0]);
             }
 
             return null;
         };
+
+        check.parseWords = parseWords;
+
+        return check;
     }
 
     function rules(options) {

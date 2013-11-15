@@ -9,7 +9,7 @@ if (process.argv.length < 3) {
     return;
 }
 
-word = process.argv[2];
+word = process.argv[2].toLowerCase();
 
 file = path.resolve(__dirname, 'dictionary.json');
 
