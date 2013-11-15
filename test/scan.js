@@ -3,7 +3,7 @@
 
     'use strict';
 
-    var scan = require('./src/scan.js'),
+    var scan = require('./../src/scan.js'),
         assert = require('assert'),
         util = require('util');
 
@@ -286,5 +286,5 @@
         { position: 6, line: 1, column: 7, id: 'g', text: 'g' }
     ]);
 
-    scan(require('fs').readFileSync('./src/scan.js', 'utf8'));
+    scan(require('fs').readFileSync('./../src/scan.js', 'utf8'));
 }());

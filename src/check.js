@@ -12,116 +12,208 @@
         });
     }
 
-    var rules = {
-            longName : function (name, parser, options) {
-                return 33 > name.length ? null :
-                        format('The name \'%s\' is too long.', name);
-            },
-            shortName : function (name, parsed, options) {
-                if (false === options.enabled || (options &&
-                        options.exceptions &&
-                        -1 !== options.exceptions.indexOf(name))) {
-                    return null;
-                }
-
-                return 1 < name.length ? null :
-                        format('The name \'%s\' is too short.', name);
-            },
-            dictionary : function (name, parsed, options) {
-                var words, dictionary;
-
-                dictionary = (function (lists) {
-                        var list;
-
-                        list = [];
-                        Object.keys(lists).forEach(function (key) {
-                            Array.prototype.push.apply(list, lists[key]);
-                        });
-
-                        return function (word) {
-                            return -1 !== list.indexOf(word);
-                        };
-                    }(options.dictionary));
-
-                function check(word) {
-                    return dictionary(word) || (options.extras &&
-                            -1 !== options.extras.indexOf(word));
-                }
-
-                if (null === parsed) {
-                    return null;
-                }
-
-                // parsed as "is Na N" so it is better to ignore it
-                if ('isNaN' === name) {
-                    return null;
-                }
-
-                if (1 < parsed.length) {
-                    words = parsed.map(function (word) {
-                        return 1 === word.length || check(word) ? null :
-                                '\'' + word + '\'';
-                    }).filter(function (word) {
-                        return null !== word;
-                    });
-
-                    if (0 < words.length) {
-                        return format(1 === words.length ?
-                                'The word %s in %s is unknown or misspelled.' :
-                                'The words %s in %s are unknown or misspelled.',
-                            words.join(', '), name);
-                    }
-                } else if (1 < parsed[0].length && !check(parsed[0])) {
-                    return format('The name \'%s\' is unknown or' +
-                        ' misspelled.', parsed[0]);
-                }
-
-                return null;
-            }
+    function shortName(options) {
+        var exceptions = options.exceptions || [];
+        return function (id) {
+            return 1 < id.length || -1 !== exceptions.indexOf(id) ? null :
+                    format('The name \'%s\' is too short.', id);
         };
-
-    function parse(name) {
-        var parts, first, second, re;
-
-        parts = [];
-
-        first = name.match(/^_?([a-z]+)([A-Z].*)?$/);
-
-        if (null === first) {
-            return null;
-        }
-
-        parts.push(first[1]);
-
-        if (2 < first.length) {
-            re = /[A-Z][a-z]+/g;
-            while (null !== (second = re.exec(first[2]))) {
-                parts.push(second[0].toLowerCase());
-            }
-        }
-
-        return parts;
     }
 
-    function check(tokens, options) {
-        options = options || { };
-        options.rules = options.rules || { };
+    function longName(options) {
+        return function (id) {
+            return 33 > id.length ? null :
+                    format('The name \'%s\' is too long.', id);
+        };
+    }
 
+    function spellCheck(options) {
+        var dictionary;
+
+        /**
+         * Detects words in the identifier name.
+         *
+         * Converts THISIsStyle, ThisIsStyle, thisIsStyle, and thisISStyle to
+         * [ "this", "is", "style" ].
+         */
+        function parseWords(id) {
+            var words, parts, isUpper, isDigit;
+
+            isUpper = (function () {
+                var min = 'A'.charCodeAt(0) - 1,
+                    max = 'Z'.charCodeAt(0) - 1;
+
+                return function (ch) {
+                    var code = ch.charCodeAt(0);
+                    return min < code && code < max;
+                };
+            }());
+
+            isDigit = (function () {
+                var min = '0'.charCodeAt(0) - 1,
+                    max = '9'.charCodeAt(0) - 1;
+
+                return function (ch) {
+                    var code = ch.charCodeAt(0);
+                    return min < code && code < max;
+                };
+            }());
+
+            words = [];
+            id.split('_').forEach(function (part) {
+                var word;
+
+                if ('' === part) {
+                    return;
+                }
+
+                word = '';
+                part.split('').forEach(function (ch, idx) {
+                    var previousIsUpper, previousIsLower, previousIsDigit,
+                        nextIsBig, first, last;
+
+                    if (isDigit(ch)) {
+                        if ('' !== word) {
+                            words.push(word.toLowerCase());
+                            word = '';
+                        }
+                        return;
+                    }
+
+                    // ABC -> ABC
+                    // aBC -> a, BC
+                    // AbC -> Ab, C
+                    // ABc -> A, Bc
+                    // abC -> ab, C
+                    // aBc -> a, Bc
+                    // Abc -> Abc,
+                    // abc -> abc
+                    if (isUpper(ch)) {
+                        first = 0 === idx;
+                        previousIsUpper = !first && isUpper(part[idx - 1]);
+                        previousIsDigit = !first && isDigit(part[idx - 1]);
+                        previousIsLower = !first && !previousIsUpper &&
+                            !previousIsDigit;
+                        last = idx === part.length - 1;
+                        nextIsBig = !last && isUpper(part[idx + 1]);
+
+                        if (previousIsLower || !(nextIsBig || last)) {
+                            if ('' !== word) {
+                                words.push(word.toLowerCase());
+                            }
+                            word = ch;
+                        } else {
+                            word += ch;
+                        }
+                    } else {
+                        word += ch;
+                    }
+                });
+
+                if ('' !== word) {
+                    words.push(word.toLowerCase());
+                }
+            });
+
+            return words;
+        }
+
+        dictionary = (function (lists) {
+            var list;
+
+            list = [];
+            Object.keys(lists).forEach(function (key) {
+                Array.prototype.push.apply(list, lists[key]);
+            });
+
+            return function (word) {
+                return -1 !== list.indexOf(word);
+            };
+        }(options.dictionary || [ ]));
+
+        return function (id) {
+            var words, unknownWords;
+
+            // parsed as "is Na N" so it is better to ignore it
+            if ('isNaN' === id) {
+                return null;
+            }
+
+            words = parseWords(id);
+
+            if (1 < words.length) {
+                unknownWords = words.map(function (word) {
+                    return 1 === word.length || dictionary(word) ? null :
+                            '\'' + word + '\'';
+                }).filter(function (word) {
+                    return null !== word;
+                });
+
+                if (0 < unknownWords.length) {
+                    return format(1 === unknownWords.length ?
+                            'The word %s in %s is unknown or misspelled.' :
+                            'The words %s in %s are unknown or misspelled.',
+                        unknownWords.join(', '), id);
+                }
+            } else if (1 < words[0].length && !dictionary(words[0])) {
+                return format('The name \'%s\' is unknown or' +
+                    ' misspelled.', words[0]);
+            }
+
+            return null;
+        };
+    }
+
+    function rules(options) {
+        options = options || [];
+
+        var list = {
+                longName : longName,
+                shortName : shortName,
+                spellCheck : spellCheck
+            };
+
+        return Object.keys(list).reduce(function (result, key) {
+            if (!options[key] || false !== options[key].enabled) {
+                result[key] = list[key](options[key] || { });
+            }
+            return result;
+        }, { });
+    }
+
+    function run(rules, tokens) {
         var messages = [];
 
         tokens.filter(function (token) {
             return token.id;
         }).forEach(function (token) {
-            var parsed = parse(token.id);
             Object.keys(rules).forEach(function (key) {
-                var message = rules[key](token.id, parsed,
-                        options.rules[key] || { });
-                if (null !== message) {
+                var result = rules[key](token.id);
+
+                if ('string' === typeof result) {
+                    result = [ result ];
+                } else if (null === result || undefined === result) {
+                    result = [ ];
+                }
+
+                if (result instanceof Array) {
+                    Array.prototype.push.apply(messages,
+                        result.map(function (message) {
+                            return {
+                                position : token.position,
+                                line : token.line,
+                                column : token.column,
+                                rule : key,
+                                message : message
+                            };
+                        }));
+                } else {
                     messages.push({
                         position : token.position,
                         line : token.line,
                         column : token.column,
-                        message : message
+                        rule : key,
+                        message : result.toString()
                     });
                 }
             });
@@ -132,10 +224,12 @@
 
     (function () {
         /*global module, window */
+        var methods = { rules : rules, run : run };
+
         if ('undefined' !== typeof module) {
-            module.exports = check;
+            module.exports = methods;
         } else if ('undefined' !== typeof window) {
-            (window.spelljs || (window.spelljs = {})).check = check;
+            (window.spelljs || (window.spelljs = {})).check = methods;
         }
     }());
 }());

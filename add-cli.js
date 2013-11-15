@@ -14,6 +14,14 @@ word = process.argv[2];
 file = path.resolve(__dirname, 'dictionary.json');
 
 dictionary = JSON.parse(fs.readFileSync(file), 'utf8');
-dictionary.long.push(word);
-dictionary.long.sort();
+if (-1 === dictionary.long.indexOf(word)) {
+    dictionary.long.push(word);
+    dictionary.long = dictionary.long.sort().reduce(function (state, word) {
+        if (word !== state.word) {
+            state.list.push(word);
+            state.word = word;
+        }
+        return state;
+    }, { list : [ ], word : '' }).list;
+}
 fs.writeFileSync(file, JSON.stringify(dictionary, null, 2));
